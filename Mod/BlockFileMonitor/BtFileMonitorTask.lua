@@ -336,17 +336,12 @@ function BtFileMonitorTask.OnUpdateBlocks()
 			end
 			
 			if isEndBlock then
-				GameLogic.GetFilters():apply_filters("BtFileMonitorTask_End", self.blocks);
-
+				local blocks = commonlib.deepcopy(self.blocks);
+				blocks.map = nil;
+				GameLogic.GetFilters():apply_filters("BtFileMonitorTask_End", blocks);
 				
-				local fromEntity = EntityManager.GetPlayer();
-				self.activeX = self.activeX or 19036;
-				self.activeY = self.activeY or 5;
-				self.activeZ = self.activeZ or 19506;				
-				local block = BlockEngine:GetBlock(self.activeX, self.activeY, self.activeZ);
-				if(block) then
-					block:OnActivated(self.activeX, self.activeY, self.activeZ, fromEntity);
-				end
+				local BtCommand = commonlib.gettable("Mod.BlockFileMonitor.BtCommand");
+				BtCommand:startModelFileMovie(blocks);
 				
 				BtFileMonitorTask.isSkipEnd = false;
 				BtFileMonitorTask.DeleteAll();				

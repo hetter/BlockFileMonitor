@@ -1,0 +1,9 @@
+故事ID,积木完成后，被播放的电影方块的坐标,被替换模型（演员）所在的电影方块的坐标,被替换模型（演员）所在的电影方块中的第0帧命名,被替换模型的文件路径
+num,numArr,numArr,str,str
+storyId,activePos,moviePos,bmaxActorName,bmaxFileName
+101,19205_5_19196,19205_5_19196,actor_model,huojian.bmax
+102,19201_5_19196,19201_5_19196,actor_model,huojian.bmax
+201,0_0_0,0_0_0,mainActor,huojian.bmax
+202,0_0_0,0_0_0,mainActor,huojian.bmax
+301,0_0_0,0_0_0,mainActor,huojian.bmax
+302,0_0_0,0_0_0,mainActor,huojian.bmax

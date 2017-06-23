@@ -12,6 +12,8 @@ local BtCommand = commonlib.gettable("Mod.BlockFileMonitor.BtCommand");
 local Commands = commonlib.gettable("MyCompany.Aries.Game.Commands");
 local CommandManager = commonlib.gettable("MyCompany.Aries.Game.CommandManager");
 
+local BlockEngine = commonlib.gettable("MyCompany.Aries.Game.BlockEngine");
+
 local BtCommand = commonlib.inherit(nil,commonlib.gettable("Mod.BlockFileMonitor.BtCommand"));
 
 function BtCommand:ctor()
@@ -22,63 +24,22 @@ function BtCommand:init()
 	self:InstallCommand();
 end
 
-function BtCommand:startModelFileMovie(blocks)
-	NPL.load("(gl)script/apps/Aries/Creator/Game/Tasks/BlockTemplateTask.lua");
-	local BlockTemplate = commonlib.gettable("MyCompany.Aries.Game.Tasks.BlockTemplate");
-	local EntityManager = commonlib.gettable("MyCompany.Aries.Game.EntityManager");
-	local BlockEngine = commonlib.gettable("MyCompany.Aries.Game.BlockEngine")		
-
-	-- save to current world
-	local name_normalized = self.replaceModelFileName or "huojian.bmax";
-	local GameLogic = commonlib.gettable("MyCompany.Aries.Game.GameLogic");
-	local fileName = format("%s%s", GameLogic.current_worlddir.."blocktemplates/", name_normalized);
-
-	local x, y, z = ParaScene.GetPlayer():GetPosition();
-	local bx, by, bz = BlockEngine:block(x,y,z)
-	local player_pos = string.format("%d,%d,%d",bx,by,bz);
-			
-	local params = {}
-
-	local task = BlockTemplate:new({operation = BlockTemplate.Operations.Save, filename = fileName, params = params, blocks = blocks})
-	task:Run();
-	
-	print("BlockTemplate save task run:" .. fileName);	
-
-	local fromEntity = EntityManager.GetPlayer();
-	self.activeX = self.activeX or 19036;
-	self.activeY = self.activeY or 5;
-	self.activeZ = self.activeZ or 19506;				
-	local block = BlockEngine:GetBlock(self.activeX, self.activeY, self.activeZ);
-	if(block) then
-		block:OnActivated(self.activeX, self.activeY, self.activeZ, fromEntity);
-	end	
-end
+local cur_task;
 
 function BtCommand:InstallCommand()
-	Commands["setActiveMovie"] = {
-		name="setActiveMovie", 
-		quick_ref="/setActiveMovie [activeX activeY activeZ]", 
-		desc=[[@param activeX activeY activeZ:active the block when the building is end]], 
-		handler = function(cmd_name, cmd_text, cmd_params, fromEntity)			
-			local ax, ay, az;
-			local CmdParser = commonlib.gettable("MyCompany.Aries.Game.CmdParser");
-			ax, ay, az, cmd_text = CmdParser.ParsePos(cmd_text, fromEntity);
-			self.activeX = ax;
-			self.activeY = ay;
-			self.activeZ = az;
-		end,
-	};
-	
-	Commands["setChangeBuildFile"] = {
-		name="setChangeBuildFile", 
-		quick_ref="/setChangeBuildFile [filename]", 
-		desc=[[]], 
-		handler = function(cmd_name, cmd_text, cmd_params, fromEntity)			
-			local filename;
-			local CmdParser = commonlib.gettable("MyCompany.Aries.Game.CmdParser");
-			filename, cmd_text = CmdParser.ParseString(cmd_text);
-			self.replaceModelFileName = filename;
-		end,
+	Commands["setActorAnimation"] = {
+		name="setActorAnimation", 
+		quick_ref="/setActorAnimation [startFrame endFrame]", 
+		desc=[[@param]], 
+		handler = function(cmd_name, cmd_text, cmd_params, fromEntity)
+			if cur_task then
+				local CmdParser = commonlib.gettable("MyCompany.Aries.Game.CmdParser");
+				local animId = CmdParser.ParseBlockId(cmd_text)
+				
+				cur_task:setMovieActorAnimId(animId);
+			end
+		end
+			
 	};
 	
 	Commands["bluetoothfilemonitor"] = {
@@ -117,6 +78,7 @@ function BtCommand:InstallCommand()
 				
 				local task = MyCompany.Aries.Game.Tasks.BtFileMonitorTask:new({filename=filename})
 				task:Run();
+				cur_task = task;
 			end
 		end,
 	};

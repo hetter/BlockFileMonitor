@@ -87,72 +87,131 @@ function BtWorldConfig:_loadConfig(filePath)
 		self.AllCfg = {};
 	end
 	
-	if not self.AllCfg[filePath] then
-		self.AllCfg[filePath] = {};
+	local isLoadSussccess = false;
+	
+	local tableName;
+	local idx = filePath:match(".+()%.%w+$")
+    if(idx) then
+        tableName = filePath:sub(1, idx-1)
+    else
+        tableName = filePath
+    end
+	
+	if not self.AllCfg[tableName] then
+		self.AllCfg[tableName] = {};
 		
-		local nowCfg = self.AllCfg[filePath];
+		local nowCfg = self.AllCfg[tableName];
 		
-		local reader = CSVDocReader:new();
+		local ext = filePath:match(".+%.(%w+)$");
+		
+		if ext == "xml" then
+			local xmlRoot = ParaXML.LuaXML_ParseFile(PluginLoader:GetPluginFolder().."BlockFileMonitor/" .. filePath);
+			if xmlRoot[1] then
+				local rows = xmlRoot[1];
+				local typeTable = rows[1].attr;
+				local startRow = 2;
+				
+				
+				for i = startRow, #rows do
+					local row = rows[i];
+					local nowRowCfg = nil;
+					for keyName, keyValue in pairs(rows[i].attr) do
+						-- 默认id为主键
+						if not nowRowCfg then
+							
+							local tableKey;
+							if typeTable.id == "str" then
+								tableKey = rows[i].attr.id;
+							elseif typeTable.id == "num" then
+								tableKey = tonumber(rows[i].attr.id);
+							end
+							
+							nowCfg[tableKey] = {};
+							nowRowCfg = nowCfg[tableKey];
+						end
+											
+						if typeTable[keyName] == "strArr" then
+							nowRowCfg[keyName] = toArray("_")(keyValue);
+						elseif typeTable[keyName] == "numArr" then
+							nowRowCfg[keyName] = toNumberArray("_")(keyValue);
+						elseif typeTable[keyName] == "str" then
+							nowRowCfg[keyName] = keyValue;
+						elseif typeTable[keyName] == "num" then
+							nowRowCfg[keyName] = tonumber(keyValue);
+						end
+					end
+					nowRowCfg = nil;
+				end
+				
+				isLoadSussccess = true;				
+			end	
+		elseif ext == "csv" then
+			local reader = CSVDocReader:new();
 
-		if(reader:LoadFile(PluginLoader:GetPluginFolder().."BlockFileMonitor/" .. filePath, 1)) then 
-			local rows = reader:GetRows();
-						
-			-- 第一行注释，第二行类型，第三行id，第四行后是数据
-			local startRow = 2;
-			local typeTable = {};
-			for keyInx, dataType in ipairs(rows[startRow]) do
-				typeTable[keyInx] = dataType;
-			end
-			
-			local keyTable = {};
-			for keyInx, keyName in ipairs(rows[startRow + 1]) do
-				keyTable[keyInx] = keyName;
-			end
+			if(reader:LoadFile(PluginLoader:GetPluginFolder().."BlockFileMonitor/" .. filePath, 1)) then 
+				local rows = reader:GetRows();
+							
+				-- 第一行注释，第二行类型，第三行id，第四行后是数据
+				local startRow = 2;
+				local typeTable = {};
+				for keyInx, dataType in ipairs(rows[startRow]) do
+					typeTable[keyInx] = dataType;
+				end
+				
+				local keyTable = {};
+				for keyInx, keyName in ipairs(rows[startRow + 1]) do
+					keyTable[keyInx] = keyName;
+				end
 
-			for i = startRow + 2, #rows do
-				local row = rows[i];
-				local nowRowCfg = nil;
-				for keyInx, keyValue in ipairs(rows[i]) do
-					-- 默认第一个值为主键
-					if keyInx == 1 then
-						
-						local tableKey;
-						if typeTable[keyInx] == "str" then
-							tableKey = keyValue;
-						elseif typeTable[keyInx] == "num" then
-							tableKey = tonumber(keyValue);
+				for i = startRow + 2, #rows do
+					local row = rows[i];
+					local nowRowCfg = nil;
+					for keyInx, keyValue in ipairs(rows[i]) do
+						-- 默认第一个值为主键
+						if keyInx == 1 then
+							
+							local tableKey;
+							if typeTable[keyInx] == "str" then
+								tableKey = keyValue;
+							elseif typeTable[keyInx] == "num" then
+								tableKey = tonumber(keyValue);
+							end
+							
+							nowCfg[tableKey] = {};
+							nowRowCfg = nowCfg[tableKey];
 						end
 						
-						nowCfg[tableKey] = {};
-						nowRowCfg = nowCfg[tableKey];
+						local keyName = keyTable[keyInx];
+											
+						if typeTable[keyInx] == "strArr" then
+							nowRowCfg[keyName] = toArray("_")(keyValue);
+						elseif typeTable[keyInx] == "numArr" then
+							nowRowCfg[keyName] = toNumberArray("_")(keyValue);
+						elseif typeTable[keyInx] == "str" then
+							nowRowCfg[keyName] = keyValue;
+						elseif typeTable[keyInx] == "num" then
+							nowRowCfg[keyName] = tonumber(keyValue);
+						end
 					end
-					
-					local keyName = keyTable[keyInx];
-										
-					if typeTable[keyInx] == "strArr" then
-						nowRowCfg[keyName] = toArray("_")(keyValue);
-					elseif typeTable[keyInx] == "numArr" then
-						nowRowCfg[keyName] = toNumberArray("_")(keyValue);
-					elseif typeTable[keyInx] == "str" then
-						nowRowCfg[keyName] = keyValue;
-					elseif typeTable[keyInx] == "num" then
-						nowRowCfg[keyName] = tonumber(keyValue);
-					end
+					nowRowCfg = nil;
 				end
-				nowRowCfg = nil;
+				
+				isLoadSussccess = true;
 			end
-		else
-			self.AllCfg[filePath] = nil;
 		end
+		
+		if not isLoadSussccess then
+			self.AllCfg[tableName] = nil;
+		end	
 	end	
 end	
 
 function BtWorldConfig:init()
-	self:_loadConfig("BtStoryConfig.csv");
-	self:_loadConfig("BtWorldConfig.csv");
+	--local xmlRoot = ParaXML.LuaXML_ParseFile(PluginLoader:GetPluginFolder().."BlockFileMonitor/" .. "BtStoryConfig.xml");
+	self:_loadConfig("BtStoryConfig.xml");
+	self:_loadConfig("BtWorldConfig.xml");
 end
 
-function BtWorldConfig:getCfg(cfgName)
-	local aaa = self.AllCfg[cfgName];
-	return aaa;
+function BtWorldConfig:getCfg(cfgName)	
+	return self.AllCfg[cfgName];
 end

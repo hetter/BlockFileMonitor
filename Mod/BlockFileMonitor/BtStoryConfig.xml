@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <element id="num" activePos="numArr" moviePos="numArr" bmaxActorName="str"  bmaxFileName="str"/>
+  <element id="101" activePos="19205_5_19196" moviePos="19205_5_19196" bmaxActorName="actor_model"  bmaxFileName="huojian.bmax"/>
+  <element id="102" activePos="19201_5_19196" moviePos="19201_5_19196" bmaxActorName="actor_model"  bmaxFileName="huojian.bmax"/>
+</root>

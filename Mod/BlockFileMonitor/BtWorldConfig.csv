@@ -1,6 +1,0 @@
-主键,情节所在的世界路径,故事章节连接（顺序）
-num,str,numArr
-id,path,storys
-1,worlds/DesignHouse/默认名字2,101_102
-2,worlds/DesignHouse/test_mz2,201_202
-3,worlds/DesignHouse/test_mz3,301_302

@@ -399,7 +399,7 @@ end
 
 function BtFileMonitorTask.setStoryConfig(storys, worldStep)
 	local BtWorldConfig = commonlib.gettable("Mod.BlockFileMonitor.BtWorldConfig");
-	local storyConfig = BtWorldConfig:getCfg("BtStoryConfig.csv")[storys[worldStep]];
+	local storyConfig = BtWorldConfig:getCfg("BtStoryConfig")[storys[worldStep]];
 	BtFileMonitorTask.nowStep = worldStep;
 	BtFileMonitorTask.storys = storys;
 	cur_storycfg = storyConfig;
@@ -455,7 +455,7 @@ function BtFileMonitorTask.setNextStoryConfig()
 		local storys = BtFileMonitorTask.storys;
 		if storys[nowStep] then
 			local BtWorldConfig = commonlib.gettable("Mod.BlockFileMonitor.BtWorldConfig");
-			local storyConfig = BtWorldConfig:getCfg("BtStoryConfig.csv")[storys[nowStep]];
+			local storyConfig = BtWorldConfig:getCfg("BtStoryConfig")[storys[nowStep]];
 			BtFileMonitorTask.nowStep = nowStep;
 			BtFileMonitorTask.storys = storys;
 			cur_storycfg = storyConfig;				

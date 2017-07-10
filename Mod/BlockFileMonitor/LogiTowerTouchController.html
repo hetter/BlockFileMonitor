@@ -1,0 +1,53 @@
+﻿<!--script/apps/Aries/Creator/Game/GUI/LogiTowerTouchController.html-->
+<pe:mcml>
+<script type="text/npl" refresh="false" src="LogiTowerTouchController.lua">
+LogiTowerTouchController = commonlib.gettable("MyCompany.Aries.Game.GUI.LogiTowerTouchController");
+GameLogic = commonlib.gettable("MyCompany.Aries.Game.GameLogic");
+LogiTowerTouchController.Init()
+function dummy()
+end
+
+function BackFunc()
+	local CommandManager = commonlib.gettable("MyCompany.Aries.Game.CommandManager");
+	CommandManager:RunFromConsole("/backToHome");
+end
+
+function BuildFunc()
+	local CommandManager = commonlib.gettable("MyCompany.Aries.Game.CommandManager");
+	CommandManager:RunFromConsole("/bluetoothfilemonitor");
+end
+
+</script>
+<input name="btnBuild" type="button" zorder="1" value="" style="position:relative;margin-right:64px;margin-top:64px;width:64px;height:64px;background:url(Mod/BlockFileMonitor/textures/test.png)" onclick="BuildFunc"/>
+<input name="btnBack" type="button" zorder="1" value="" style="position:relative;margin-right:64px;margin-top:0px;width:64px;height:64px;background:url(Mod/BlockFileMonitor/textures/test2.png)" onclick="BackFunc"/>
+<pe:container name="touch_scene" style="position:relative;background:;" alignment="_fi" width="100%" height="100%" ontouch="LogiTowerTouchController.OnTouchScene"/>
+<!--key board area-->
+<!--touch and camera area-->
+<pe:container style="position:relative;background:;" ClickThrough="true" alignment="_mb" width="0" height="200">
+<pe:container name="move_pad" ontouch="LogiTowerTouchController.OnTouchMove" style="position:relative;background:;width:200px;height:200px;padding:5px;" ClickThrough="false" alignment="_lt">
+	<div style="position:relative;width:190px;height:190px;background:url(Texture/Aries/Creator/Mobile/blocks_UI_32bits.png#0 404 108 108:4 92 97 4);background-color:#ffffff30;"></div>
+    <pe:if condition='<%=GameLogic.GameMode:IsEditor()%>'>
+        <div name="fly_up" zorder="1" style="position:relative;background:;width:55px;height:55px;float:left;" ontouch="LogiTowerTouchController.OnTouchFlyUp">
+            <div style="background:url(Texture/Aries/Creator/Mobile/blocks_UI_32bits.png#404 45 23 22);background-color:#ffffff30;width:23px;height:22px;margin:16px;" />
+        </div>
+        <div name="fly_down" zorder="1" style="position:relative;valign:bottom;background:;width:55px;height:55px;float:left;" ontouch="LogiTowerTouchController.OnTouchFlyDown">
+            <div style="background:url(Texture/Aries/Creator/Mobile/blocks_UI_32bits.png#404 45 23 22);background-rotation:-3.14;background-color:#ffffff30;width:23px;height:22px;margin:16px;" />
+        </div>
+    </pe:if>
+    <div style="position:relative;margin-left:84px;margin-top:59px;background:url(Texture/Aries/Creator/Mobile/blocks_UI_32bits.png#379 47 16 16);background-color:#ffffff30;width:16px;height:16px;" />
+    <div style="position:relative;margin-left:59px;margin-top:87px;background-rotation:-1.57;background:url(Texture/Aries/Creator/Mobile/blocks_UI_32bits.png#379 47 16 16);background-color:#ffffff30;width:16px;height:16px;" />
+    <div style="position:relative;margin-left:112px;margin-top:86px;background-rotation:1.57;background:url(Texture/Aries/Creator/Mobile/blocks_UI_32bits.png#379 47 16 16);background-color:#ffffff30;width:16px;height:16px;" />
+    <div style="position:relative;margin-left:86px;margin-top:112px;background-rotation:3.14;background:url(Texture/Aries/Creator/Mobile/blocks_UI_32bits.png#379 47 16 16);background-color:#ffffff30;width:16px;height:16px;" />
+</pe:container>
+<pe:if condition='<%=not GameLogic.GameMode:IsEditor()%>'>
+<pe:container name="camera_pad" ontouch="LogiTowerTouchController.OnTouchCamera" style="position:relative;background:;width:200px;height:200px;padding:5px;" ClickThrough="false" alignment="_rt">
+    <div style="position:relative;width:190px;height:190px;background:url(Texture/Aries/Creator/Mobile/blocks_UI_32bits.png#110 404 108 108:97 92 4 4);background-color:#ffffff30;"></div>
+    <!--<div style="position:relative;margin-left:50px;margin-top:61px;background:url(Texture/Aries/Creator/Mobile/blocks_UI_32bits.png#434 47 19 17);background-color:#ffffff30;width:19px;height:17px;" />
+    <div style="position:relative;margin-left:124px;margin-top:61px;background-rotation:3.14;background:url(Texture/Aries/Creator/Mobile/blocks_UI_32bits.png#434 47 19 17);background-color:#ffffff30;width:19px;height:17px;" />
+    <div style="position:relative;margin-left:76px;margin-top:67px;background:url(Texture/Aries/Creator/Mobile/blocks_UI_32bits.png#459 53 17 5);background-color:#ffffff30;width:17px;height:5px;" />
+    <div style="position:relative;margin-left:100px;margin-top:67px;background:url(Texture/Aries/Creator/Mobile/blocks_UI_32bits.png#459 53 17 5);background-color:#ffffff30;width:17px;height:5px;" />
+    <div style="position:relative;margin-left:77px;margin-top:111px;background:url(Texture/Aries/Creator/Mobile/blocks_UI_32bits.png#351 119 37 47);background-color:#ffffff30;width:37px;height:47px;" />-->
+</pe:container>
+</pe:if>
+</pe:container>
+</pe:mcml>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
   <element id="num" path="str" storys="numArr"/>
-  <element id="1" path="worlds/DesignHouse/Ä¬ÈÏÃû×Ö2" storys="101_102"/>
+  <element id="1" path="worlds/DesignHouse/default2" storys="101_102"/>
   <element id="2" path="worlds/DesignHouse/test_mz2" storys="201_202"/>  
 </root>

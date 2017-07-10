@@ -47,6 +47,18 @@ local cur_storycfg;
 function BtFileMonitorTask:ctor()
 end
 
+-- Redirect this object as a scene context, so that it will receive all key/mouse events from the scene. 
+-- as if this task object is a scene context derived class. One can then overwrite
+-- `UpdateManipulators` function to add any manipulators. 
+--[[
+function BtFileMonitorTask:LoadSceneContext()
+	NPL.load("(gl)Mod/BlockFileMonitor/BtFileMonitorContext.lua");
+	self.sceneContext = self.sceneContext or Game.SceneContext.BtFileMonitorContext:new():RedirectInput(self);
+	self.sceneContext:activate();
+	self.sceneContext:UpdateManipulators();
+end
+--]]
+
 function BtFileMonitorTask.RegisterHooks()
 	local self = cur_instance;
 	self:LoadSceneContext();
@@ -100,31 +112,31 @@ function GetActorFromItemName(self, itemDefaultName, bCreateIfNotExist)
 	end
 end
 
+function BtFileMonitorTask:_saveBuildBlocks(saveName, blocks)
+	NPL.load("(gl)script/apps/Aries/Creator/Game/Tasks/BlockTemplateTask.lua");
+	
+	local BlockTemplate = commonlib.gettable("MyCompany.Aries.Game.Tasks.BlockTemplate");
+	
+	local GameLogic = commonlib.gettable("MyCompany.Aries.Game.GameLogic");
+	local fileName = format("%s%s", GameLogic.current_worlddir.."blocktemplates/", saveName);
+
+	local params = {}
+
+	local task = BlockTemplate:new({operation = BlockTemplate.Operations.Save, filename = fileName, params = params, blocks = blocks})
+	task:Run();
+end	
+
 function BtFileMonitorTask:startModelFileMovie(blocks)
 	if not cur_storycfg then
 		return;
 	end	
 		
-	NPL.load("(gl)script/apps/Aries/Creator/Game/Tasks/BlockTemplateTask.lua");
-	local BlockTemplate = commonlib.gettable("MyCompany.Aries.Game.Tasks.BlockTemplate");
-	local EntityManager = commonlib.gettable("MyCompany.Aries.Game.EntityManager");
 	local BlockEngine = commonlib.gettable("MyCompany.Aries.Game.BlockEngine")		
 
 	-- save to current world	
 	local name_normalized = cur_storycfg.bmaxFileName;
-	local GameLogic = commonlib.gettable("MyCompany.Aries.Game.GameLogic");
-	local fileName = format("%s%s", GameLogic.current_worlddir.."blocktemplates/", name_normalized);
-
-	local x, y, z = ParaScene.GetPlayer():GetPosition();
-	local bx, by, bz = BlockEngine:block(x,y,z)
-	local player_pos = string.format("%d,%d,%d",bx,by,bz);
-			
-	local params = {}
-
-	local task = BlockTemplate:new({operation = BlockTemplate.Operations.Save, filename = fileName, params = params, blocks = blocks})
-	task:Run();
 	
-	print("BlockTemplate save task run:" .. fileName);	
+	self:_saveBuildBlocks(name_normalized, blocks);
 
 	local fromEntity = EntityManager.GetPlayer();
 	
@@ -231,14 +243,16 @@ function BtFileMonitorTask:Run()
 		-- ignore the task if there is other top-level tasks.
 		return;
 	end
-	
-	local isStoryMode = true;
-	
-	if isStoryMode then
+
+	if BtFileMonitorTask.isStoryMode then
 		BtFileMonitorTask.clearFbxModelData();
 		-- 设置下一个情节的参数	
 		BtFileMonitorTask.setNextStoryConfig();
 	end	
+	
+	-- 锁定人物，不能移动
+	local player = EntityManager.GetFocus();
+	player:SetControlledExternally(true);
 
 	cur_instance = self;
 	
@@ -274,6 +288,7 @@ end
 -- @param bCommitChange: true to commit all changes made 
 function BtFileMonitorTask.EndEditing(bCommitChange)
 	BtFileMonitorTask.finished = true;
+	
 	BtFileMonitorTask.ClosePage()
 	BtFileMonitorTask.UnregisterHooks();
 	if(cur_instance) then
@@ -332,7 +347,20 @@ function BtFileMonitorTask.ShowPage()
 				height = 512,
 		});
 	MyCompany.Aries.Creator.ToolTipsPage.ShowPage(false);
+	
+	local LogiTowerTouchController = commonlib.gettable("MyCompany.Aries.Game.GUI.LogiTowerTouchController");
+	LogiTowerTouchController.ShowPage(false);	
+	
+	if BtFileMonitorTask.isStoryMode then
+		GameLogic.GetFilters():add_filter("pop_movie_mode", BtFileMonitorTask.OnGameModeChanged);
+	end	
 end
+
+function BtFileMonitorTask.OnGameModeChanged()
+	GameLogic.GetFilters():remove_filter("pop_movie_mode", BtFileMonitorTask.OnGameModeChanged);
+	local LogiTowerTouchController = commonlib.gettable("MyCompany.Aries.Game.GUI.LogiTowerTouchController");
+	LogiTowerTouchController.ShowPage(true);
+end	
 
 function BtFileMonitorTask.ClosePage()
 	if(page) then
@@ -388,21 +416,35 @@ function BtFileMonitorTask.DeleteAll()
 	local cx, cy, cz = self.cx, self.cy, self.cz;
 	local blocks = self.blocks or {};
 	local _, b;
-	for _, b in ipairs(blocks) do
-		if(b[1]) then
-			local x, y, z = cx+b[1], cy+b[2], cz+b[3];
-			BlockEngine:SetBlock(x,y,z, 0);
+	
+	if BtFileMonitorTask.isStoryMode then
+		for _, b in ipairs(blocks) do
+			if(b[1]) then
+				local x, y, z = cx+b[1], cy+b[2], cz+b[3];
+				BlockEngine:SetBlock(x,y,z, 0);
+			end
 		end
 	end
+	
 	BtFileMonitorTask.EndEditing();
 end
 
 function BtFileMonitorTask.setStoryConfig(storys, worldStep)
-	local BtWorldConfig = commonlib.gettable("Mod.BlockFileMonitor.BtWorldConfig");
-	local storyConfig = BtWorldConfig:getCfg("BtStoryConfig")[storys[worldStep]];
-	BtFileMonitorTask.nowStep = worldStep;
-	BtFileMonitorTask.storys = storys;
-	cur_storycfg = storyConfig;
+	if not storys then
+		BtFileMonitorTask.isStoryMode = false;
+		BtFileMonitorTask.nowStep = nil;
+		BtFileMonitorTask.storys = nil;
+		cur_storycfg = nil;
+	else
+		commonlib.echo("!!!!! setStoryConfig");
+		BtFileMonitorTask.isStoryMode = true;
+		local BtWorldConfig = commonlib.gettable("Mod.BlockFileMonitor.BtWorldConfig");
+		local storyConfig = BtWorldConfig:getCfg("BtStoryConfig")[storys[worldStep]];
+		BtFileMonitorTask.nowStep = worldStep;
+		BtFileMonitorTask.storys = storys;
+		cur_storycfg = storyConfig;		
+	end
+
 end
 
 -- 保存额外模型相关配置
@@ -463,6 +505,119 @@ function BtFileMonitorTask.setNextStoryConfig()
 	end	
 end
 
+function BtFileMonitorTask.setEndBlock()
+	local self = cur_instance;
+	if(not self) then
+		return
+	end
+	
+	local newBlocks = {};
+	
+	if BtFileMonitorTask.isStoryMode then
+		for _, b in ipairs(self.blocks) do
+			local modelConfig = BtFileMonitorTask.FbxModelConfig[b[5]];
+			if modelConfig then
+				
+				local cx, cy, cz = self.cx, self.cy, self.cz;
+				local x, y, z = cx+b[1], cy+b[2], cz+b[3];
+				
+				local blocks = self.blocks;
+				
+				--如果是模型方块，删除自己并记录，
+				local function getBlock(_x, _y, _z)
+					
+					local sparse_index =_x*30000*30000+_y*30000+_z;
+					if blocks.map[sparse_index] then
+						return blocks.map[sparse_index].blockInx;
+					end						
+				end
+				
+				--寻找与模型方块临接的方块
+				local nearBlockInx;
+				if not nearBlockInx then
+					nearBlockInx = getBlock(x + 1, y, z);
+				end
+				if not nearBlockInx then
+					nearBlockInx = getBlock(x - 1, y, z);
+				end
+				if not nearBlockInx then
+					nearBlockInx = getBlock(x, y + 1, z);
+				end						
+				if not nearBlockInx then
+					nearBlockInx = getBlock(x, y - 1, z);
+				end
+				if not nearBlockInx then
+					nearBlockInx = getBlock(x, y, z + 1);
+				end
+				if not nearBlockInx then
+					nearBlockInx = getBlock(x, y, z - 1);
+				end
+				
+				-- 有邻接方块时才继续
+				if nearBlockInx then							
+					
+					local nearB = blocks[nearBlockInx];
+					
+					local blockLen = 0.03333334 --
+					local bonePosX = b[1] * blockLen;
+					local bonePosY = b[2] * blockLen;
+					local bonePosZ = b[3] * blockLen;
+					
+					BtFileMonitorTask.pushBoneModel(modelConfig, bonePosX, bonePosY, bonePosZ);
+					--[[
+					-- 从普通方块改成骨骼方块
+					local block_id = block_types.names.Bone;
+					local data = 5;
+					local xml_data = {};
+					xml_data.name="entity";
+					xml_data.attr = {};
+					
+					xml_data.attr.bx = 0;
+					xml_data.attr.by = 0;
+					xml_data.attr.bz = 0;
+					
+					xml_data.attr.px = 0;
+					xml_data.attr.py = 0;
+					xml_data.attr.pz = 0;
+					
+					xml_data.attr.class = "EntityBlockBone";
+					
+					xml_data.item_id = block_types.names.Bone;
+					
+					nearB[1] = nearB[1];
+					nearB[2] = nearB[2];
+					nearB[3] = nearB[3];
+					nearB[4] = block_id;
+					nearB[5] = data;
+					nearB[6] = xml_data;
+					--]]
+				end
+				
+			else
+				table.insert(newBlocks, b);
+			end
+		end
+	end
+	
+	GameLogic.GetFilters():apply_filters("BtFileMonitorTask_End", newBlocks);
+	
+	--  解除锁定
+	local player = EntityManager.GetFocus();
+	player:SetControlledExternally(false);
+	
+	if BtFileMonitorTask.isStoryMode then
+		self:startModelFileMovie(newBlocks);
+	else
+	
+		local LogiTowerTouchController = commonlib.gettable("MyCompany.Aries.Game.GUI.LogiTowerTouchController");
+		LogiTowerTouchController.ShowPage(true);	
+		self:_saveBuildBlocks("sth.block.xml", blocks);
+	end
+	
+	BtFileMonitorTask.isSkipEnd = false;
+	BtFileMonitorTask.DeleteAll();	
+end
+
 function BtFileMonitorTask.OnUpdateBlocks()
 	local self = cur_instance;
 	if(not self) then
@@ -494,23 +649,25 @@ function BtFileMonitorTask.OnUpdateBlocks()
 			local blocks = NPL.LoadTableFromString(node[1]);
 			local isEndBlock = false;
 			
-			
-			-- bbaa的面积
-			local boxLenth = 8;
-			-- add aabb unvisible block
-			local aabb_block_min_inx = #blocks + 1;
-			blocks[aabb_block_min_inx] = {};
-			blocks[aabb_block_min_inx][1] = boxLenth; --x
-			blocks[aabb_block_min_inx][2] = 0; --y
-			blocks[aabb_block_min_inx][3] = boxLenth; --z 
-			blocks[aabb_block_min_inx][4] = 0; --id
-			
-			local aabb_block_max_inx = #blocks + 1;
-			blocks[aabb_block_max_inx] = {};
-			blocks[aabb_block_max_inx][1] = -boxLenth; --x
-			blocks[aabb_block_max_inx][2] = boxLenth; --y
-			blocks[aabb_block_max_inx][3] = -boxLenth; --z 
-			blocks[aabb_block_max_inx][4] = 0; --id
+			-- 需要播放电影时才设置aabb	
+			if BtFileMonitorTask.isStoryMode then
+				-- bbaa的面积
+				local boxLenth = 8;
+				-- add aabb unvisible block
+				local aabb_block_min_inx = #blocks + 1;
+				blocks[aabb_block_min_inx] = {};
+				blocks[aabb_block_min_inx][1] = boxLenth; --x
+				blocks[aabb_block_min_inx][2] = 0; --y
+				blocks[aabb_block_min_inx][3] = boxLenth; --z 
+				blocks[aabb_block_min_inx][4] = 0; --id
+				
+				local aabb_block_max_inx = #blocks + 1;
+				blocks[aabb_block_max_inx] = {};
+				blocks[aabb_block_max_inx][1] = -boxLenth; --x
+				blocks[aabb_block_max_inx][2] = boxLenth; --y
+				blocks[aabb_block_max_inx][3] = -boxLenth; --z 
+				blocks[aabb_block_max_inx][4] = 0; --id
+			end
 						
 			if(blocks and #blocks > 0) then
 				self.cy = self.cy + (self.dy or 0);
@@ -590,7 +747,7 @@ function BtFileMonitorTask.OnUpdateBlocks()
 									local entity = BlockEngine:GetBlockEntity(x,y,z);
 									entity:setScale(modelConfig.scale);
 								else
-									BlockEngine:SetBlock(x,y,z, new_id, b[5], nil, b[6]);	
+									BlockEngine:SetBlock(x,y,z, 10, 4095);	
 								end
 							end
 						end
@@ -603,121 +760,40 @@ function BtFileMonitorTask.OnUpdateBlocks()
 					self.dy = nil;
 				end
 				
-				-- 清除方块
-				for _, b in ipairs(last_blocks) do
-					if(b[1]) then
-						local x, y, z = cx+b[1], cy+b[2], cz+b[3];
-						local sparse_index =x*30000*30000+y*30000+z;
-						if(not blocks.map[sparse_index]) then
-							BlockEngine:SetBlock(x,y,z, 0);
+				
+				if BtFileMonitorTask.isStoryMode then
+					-- 清除方块
+					for _, b in ipairs(last_blocks) do
+						if(b[1]) then
+							local x, y, z = cx+b[1], cy+b[2], cz+b[3];
+							local sparse_index =x*30000*30000+y*30000+z;
+							if(not blocks.map[sparse_index]) then
+								BlockEngine:SetBlock(x,y,z, 0);
+							end
 						end
 					end
+					
+				
 				end
 
-				self.blocks = blocks;
+				-- 重新设置方块总数
 				if(#blocks~=self.block_count) then
 					self.block_count = #blocks;
 					if(page) then
-						-- 减去aabb的两个透明顶点方块
-						page:SetValue("blockcount", self.block_count - 2);
+						if BtFileMonitorTask.isStoryMode then
+							-- 减去aabb的两个透明顶点方块
+							page:SetValue("blockcount", self.block_count - 2);
+						else
+							page:SetValue("blockcount", self.block_count);
+						end	
 					end
-				end
+				end	
+				
+				self.blocks = blocks;
 			end
 			
 			if isEndBlock then
-				local newBlocks = {};
-				
-				for _, b in ipairs(self.blocks) do
-					local modelConfig = BtFileMonitorTask.FbxModelConfig[b[5]];
-					if modelConfig then
-						
-						local cx, cy, cz = self.cx, self.cy, self.cz;
-						local x, y, z = cx+b[1], cy+b[2], cz+b[3];
-						
-						--blocks[_] = {};
-						
-						--如果是模型方块，删除自己并记录，
-						local function getBlock(_x, _y, _z)
-							
-							local sparse_index =_x*30000*30000+_y*30000+_z;
-							if blocks.map[sparse_index] then
-								return blocks.map[sparse_index].blockInx;
-							end						
-						end
-						
-						--寻找与模型方块临接的方块
-						local nearBlockInx;
-						if not nearBlockInx then
-							nearBlockInx = getBlock(x + 1, y, z);
-						end
-						if not nearBlockInx then
-							nearBlockInx = getBlock(x - 1, y, z);
-						end
-						if not nearBlockInx then
-							nearBlockInx = getBlock(x, y + 1, z);
-						end						
-						if not nearBlockInx then
-							nearBlockInx = getBlock(x, y - 1, z);
-						end
-						if not nearBlockInx then
-							nearBlockInx = getBlock(x, y, z + 1);
-						end
-						if not nearBlockInx then
-							nearBlockInx = getBlock(x, y, z - 1);
-						end
-						
-						-- 有邻接方块时才继续
-						if nearBlockInx then							
-							
-							local nearB = blocks[nearBlockInx];
-							
-							local blockLen = 0.03333334 --
-							local bonePosX = b[1] * blockLen;
-							local bonePosY = b[2] * blockLen;
-							local bonePosZ = b[3] * blockLen;
-							
-							BtFileMonitorTask.pushBoneModel(modelConfig, bonePosX, bonePosY, bonePosZ);
-							--[[
-							-- 从普通方块改成骨骼方块
-							local block_id = block_types.names.Bone;
-							local data = 5;
-							local xml_data = {};
-							xml_data.name="entity";
-							xml_data.attr = {};
-							
-							xml_data.attr.bx = 0;
-							xml_data.attr.by = 0;
-							xml_data.attr.bz = 0;
-							
-							xml_data.attr.px = 0;
-							xml_data.attr.py = 0;
-							xml_data.attr.pz = 0;
-							
-							xml_data.attr.class = "EntityBlockBone";
-							
-							xml_data.item_id = block_types.names.Bone;
-							
-							nearB[1] = nearB[1];
-							nearB[2] = nearB[2];
-							nearB[3] = nearB[3];
-							nearB[4] = block_id;
-							nearB[5] = data;
-							nearB[6] = xml_data;
-							--]]
-						end
-						
-					else
-						table.insert(newBlocks, b);
-					end
-				end
-				
-				
-				GameLogic.GetFilters():apply_filters("BtFileMonitorTask_End", newBlocks);
-				
-				self:startModelFileMovie(newBlocks);
-				
-				BtFileMonitorTask.isSkipEnd = false;
-				BtFileMonitorTask.DeleteAll();				
+				BtFileMonitorTask.setEndBlock();
 			end
 
 		end

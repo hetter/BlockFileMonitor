@@ -29,7 +29,7 @@ local cur_task;
 function BtCommand:InstallCommand()
 	Commands["setActorAnimation"] = {
 		name="setActorAnimation", 
-		quick_ref="/setActorAnimation [startFrame endFrame]", 
+		quick_ref="/setActorAnimation [animId]", 
 		desc=[[@param]], 
 		handler = function(cmd_name, cmd_text, cmd_params, fromEntity)
 			if cur_task then
@@ -41,6 +41,36 @@ function BtCommand:InstallCommand()
 		end
 			
 	};
+	
+	Commands["hideBlock"] = {
+		name="hideBlock", 
+		quick_ref="/hideBlock [animId]", 
+		desc=[[@param]], 
+		handler = function(cmd_name, cmd_text, cmd_params, fromEntity)
+			
+			local CmdParser = commonlib.gettable("MyCompany.Aries.Game.CmdParser");
+			local xxx, yyy, zzz, cmd_text = CmdParser.ParsePos(cmd_text);
+			local BlockEngine = commonlib.gettable("MyCompany.Aries.Game.BlockEngine");
+			local entity = BlockEngine:GetBlockEntity(xxx,yyy,zzz);
+			entity:SetOpacity(0);
+			
+		end			
+	};	
+	
+	Commands["backToHome"] = {
+		name="backToHome", 
+		quick_ref="/backToHome ", 
+		desc=[[@param]], 
+		handler = function(cmd_name, cmd_text, cmd_params, fromEntity)		
+			NPL.load("(gl)Mod/BlockFileMonitor/ProtocolEnum.lua");
+			local ProtocolEnum = commonlib.gettable("Mod.BlockFileMonitor.ProtocolEnum");		
+			MobileDevice.callJavaFunc({protocolId = ProtocolEnum.OPEN_SDK_ACTIVITY, data=""},nil,function(msg)
+				commonlib.echo("==============callJavaFunc backToHome");
+				commonlib.echo(msg);
+			end);			
+			
+		end			
+	};		
 	
 	Commands["bluetoothfilemonitor"] = {
 		name="bluetoothfilemonitor", 
@@ -74,6 +104,9 @@ function BtCommand:InstallCommand()
 			end
 
 			if(filename) then
+				local EntityManager = commonlib.gettable("MyCompany.Aries.Game.EntityManager");
+				EntityManager.GetPlayer():SetVisible(false);
+				--EntityManager.SetFocus();
 				NPL.load("(gl)Mod/BlockFileMonitor/BtFileMonitorTask.lua");
 				
 				local task = MyCompany.Aries.Game.Tasks.BtFileMonitorTask:new({filename=filename})
